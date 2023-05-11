@@ -1,0 +1,75 @@
+#!/bin/zsh
+###
+# @Author	Martin Bortel <martin.bortel@gmail.com>
+# @Created	10/03/2022
+# 
+# @Package	bash_scripts
+###
+ssd_path=~
+disk_file=$ssd_path/disk.log
+c2=0; _even=0; i=0; coef=1953
+
+function calculate_ssd_spenditure(){
+  local n_lines=$1
+  local arr_date=($(tail -n$n_lines $disk_file | awk '{print $3"-"$2"-"$6}'))
+  local t_written=$(( $(tail -n1 $disk_file | awk '{print $11}' | sed 's/,//g') / $coef ))
+  t_written=$(( t_written / 1000 )).${t_written: -3:2}
+
+  for c in $(tail -n$n_lines $disk_file | awk '{print $11}' | sed 's/,//g');do
+    (( i++ ))
+    [[ ${#arr_date[$i]} -lt 11 ]] && echo_date="0${arr_date[$i]}"
+    [[ ${#arr_date[$i]} -lt 11 ]] || echo_date="${arr_date[$i]}"
+    if [[ $_even == 0 ]];then
+      c2=$c
+      _even=1
+      printf " - %11s %6s %2s %5s %2s\n" "-----------" "------" "--" "-----" "--"
+      written_bytes=$(( $c / $coef ))
+      # echo ${#written_bytes} ${written_bytes} ${c} ${coef}
+      if [[ ${#written_bytes} -lt 5 ]];then
+        ext=GB
+        h_written=$(( $written_bytes ))
+      elif [[ ${#written_bytes} -ge 5 ]];then
+        ext=TB
+        h_written=$(( $written_bytes / 1000 )).${written_bytes: -3:2}
+      fi
+      printf " + %11s %6s %2s %5s %2s\n" $echo_date "d.incr" "  " $h_written $ext
+      printf " - %11s %6s %2s %5s %2s\n" "-----------" "------" "--" "-----" "--"
+    else
+      count=$(( $(( $c - $c2 )) / $coef ))
+      ext="GB"
+      if [[ ${#count} -gt 3 ]];then
+        count="${count:0:1}.${count:1}"
+        ext="TB"
+      fi
+      if [[ $i == $1 ]];then
+        printf " v %11s %6s %2s %5s %2s\n" $echo_date $count $ext $t_written "TB"
+      else
+        printf " | %11s %6s %2s %5s %2s\n" $echo_date $count $ext
+      fi
+      c2=$c
+    fi
+  done
+  #printf " - %11s %6s %2s %5s %2s\n" "-----------" "------" "--"
+  printf " - %11s %6s %2s %5s %2s\n" "-----------" "------" "--" "-----" "--"
+}
+
+if [[ $# -lt 1 ]];then 
+  echo "[ERROR] Parameter: Missing number of lines to calculate from \n${disk_file} or '--stat'"
+  exit 1
+else
+  case $1 in
+    "1")
+      echo "[ERROR] Value: Number of lines to calculate from \n${disk_file} \nhas to be at least 2"
+      exit 2
+      ;;
+    *"stat"*)
+      sudo smartctl --all /dev/disk0; date
+      exit 0
+      ;;
+    *)
+      calculate_ssd_spenditure $@
+      ;;
+  esac
+fi
+#EOF
+###

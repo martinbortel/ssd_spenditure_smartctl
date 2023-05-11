@@ -1,0 +1,1 @@
+00 15 * * * echo "$(date) - $(/opt/homebrew/bin/smartctl --all /dev/disk0 | grep -i written)" >> /Users/martinbortel/disk.log
